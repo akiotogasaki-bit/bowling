@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎳 ボウリングコンペ集計</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  /* ===== ここに GAS のウェブアプリ URL を貼ってください（/exec で終わるもの） =====
+     例: const GAS_URL = "https://script.google.com/macros/s/XXXX/exec";
+     ↓ JavaScript 側の GAS_URL を編集します（このコメントは目印です） */
+
+  :root{
+    --cream:#F1E7D0; --paper:#FBF6EA; --paper2:#F6EEDD;
+    --ink:#2B2520; --ink-soft:#6B6052;
+    --teal:#0F5E5B; --teal-d:#0A4744; --teal-l:#1B7A76;
+    --red:#D6442A; --red-d:#B5331D;
+    --gold:#E7A93B; --gold-d:#C98A1E;
+    --line:#D9CBAD; --line-d:#C7B690;
+    --shadow:0 2px 0 var(--line-d), 0 8px 22px rgba(43,37,32,.10);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'M PLUS Rounded 1c',sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(circle at 12% 8%, rgba(214,68,42,.06), transparent 40%),
+      radial-gradient(circle at 88% 4%, rgba(15,94,91,.07), transparent 42%),
+      repeating-linear-gradient(0deg, transparent 0 38px, rgba(43,37,32,.025) 38px 39px),
+      var(--cream);
+    min-height:100vh;
+    line-height:1.5;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:0 14px 60px;}
+
+  /* Header */
+  header{
+    position:relative; margin:0 -14px 16px; padding:22px 18px 18px;
+    background:
+      repeating-linear-gradient(135deg, var(--teal) 0 26px, var(--teal-d) 26px 52px);
+    color:#fff; border-bottom:5px solid var(--gold);
+    box-shadow:0 6px 18px rgba(10,71,68,.28);
+  }
+  header h1{
+    margin:0; font-family:'Bungee',cursive; font-weight:400;
+    font-size:clamp(22px,6.4vw,34px); letter-spacing:1px;
+    text-shadow:2px 2px 0 var(--red-d);
+  }
+  header h1 .ja{font-family:'M PLUS Rounded 1c'; font-weight:900; font-size:.62em; display:block; letter-spacing:0; margin-top:2px; text-shadow:none; color:#FCEBC9;}
+  header .pins{position:absolute; right:14px; top:14px; font-size:30px; opacity:.95; transform:rotate(8deg);}
+  header .reload{
+    position:absolute; right:14px; bottom:14px; background:rgba(255,255,255,.16);
+    border:1.5px solid rgba(255,255,255,.5); color:#fff; border-radius:999px;
+    padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  header .reload:active{transform:scale(.96);}
+
+  /* Setup card */
+  #setup{display:none; background:var(--paper); border:2px dashed var(--red);
+    border-radius:14px; padding:18px; margin-top:10px;}
+  #setup h2{margin:0 0 8px; color:var(--red-d); font-size:17px;}
+  #setup ol{margin:8px 0 0; padding-left:20px;}
+  #setup li{margin:5px 0; font-size:14px;}
+  code{background:#efe5cd; padding:1px 6px; border-radius:5px; font-size:.92em;}
+
+  /* Year tabs */
+  #year-tabs{display:flex; gap:8px; overflow-x:auto; padding:4px 2px 10px; scrollbar-width:none;}
+  #year-tabs::-webkit-scrollbar{display:none;}
+  .ytab{
+    flex:0 0 auto; padding:9px 16px; border-radius:11px 11px 0 0;
+    border:2px solid var(--line-d); border-bottom:none; background:var(--paper2);
+    font-weight:700; font-size:14px; cursor:pointer; color:var(--ink-soft);
+    white-space:nowrap; font-family:inherit;
+  }
+  .ytab.active{background:var(--teal); color:#fff; border-color:var(--teal-d); box-shadow:0 -2px 6px rgba(10,71,68,.18);}
+  .ytab.add{border-style:dashed; color:var(--teal); background:transparent;}
+
+  /* Cards */
+  .card{background:var(--paper); border:2px solid var(--line-d); border-radius:14px;
+    margin-bottom:14px; box-shadow:var(--shadow); overflow:hidden; animation:rise .4s both;}
+  @keyframes rise{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+  .card-h{display:flex; align-items:center; gap:8px; padding:12px 15px;
+    font-weight:900; font-size:15px; background:var(--paper2); border-bottom:2px solid var(--line);}
+  .card-h .dot{width:11px; height:11px; border-radius:50%; background:var(--red); box-shadow:0 0 0 3px rgba(214,68,42,.18);}
+  .card-b{padding:14px 15px;}
+
+  /* Ranking */
+  .rank-grid{display:grid; grid-template-columns:1fr; gap:14px;}
+  @media(min-width:560px){.rank-grid{grid-template-columns:1fr 1fr;}}
+  .rank-box h3{margin:0 0 8px; font-size:14px; color:var(--teal-d);
+    display:flex; align-items:center; gap:6px;}
+  .rank-box h3 .tag{font-size:11px; font-weight:700; color:var(--ink-soft); background:#ece1c8; padding:2px 7px; border-radius:6px;}
+  .rank-row{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px;
+    background:var(--paper2); margin-bottom:6px; border:1.5px solid var(--line);}
+  .rank-row.win{background:linear-gradient(90deg,#FDF3DA,#F8E7BD); border-color:var(--gold); box-shadow:0 0 0 1px var(--gold-d) inset;}
+  .rank-no{width:24px; text-align:center; font-family:'Bungee'; font-size:15px; color:var(--ink-soft);}
+  .rank-row.win .rank-no{color:var(--gold-d);}
+  .rank-name{flex:1; font-weight:700; font-size:14px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .rank-avg{font-family:'Bungee'; font-size:17px; color:var(--teal);}
+  .rank-row.win .rank-avg{color:var(--gold-d);}
+  .empty{color:var(--ink-soft); font-size:13px; padding:6px 2px;}
+
+  /* Month accordion */
+  .mhead{display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+    padding:13px 15px; background:var(--paper); border:none; border-bottom:2px solid var(--line);
+    font-family:inherit; font-weight:900; font-size:16px; color:var(--ink); cursor:pointer;}
+  .month-item:last-child .mhead{border-bottom:none;}
+  .month-item.open .mhead{background:var(--paper2);}
+  .mhead .mn{font-family:'Bungee'; color:var(--red); font-size:18px; min-width:46px;}
+  .mhead .half{font-size:11px; font-weight:700; color:#fff; background:var(--teal-l); padding:2px 8px; border-radius:6px;}
+  .mhead .chev{margin-left:auto; transition:transform .25s; color:var(--ink-soft);}
+  .month-item.open .mhead .chev{transform:rotate(180deg);}
+  .mbody{display:none; padding:14px 15px; background:#fdfaf1; border-bottom:2px solid var(--line);}
+  .month-item.open .mbody{display:block; animation:rise .25s both;}
+  .month-item:last-child .mbody{border-bottom:none;}
+
+  .sub{border:1.5px solid var(--line); border-radius:11px; padding:12px; margin-bottom:12px; background:var(--paper);}
+  .sub:last-child{margin-bottom:0;}
+  .sub-t{font-weight:900; font-size:13px; letter-spacing:.5px; margin:0 0 10px; display:flex; align-items:center; gap:7px;}
+  .sub-t .ic{font-size:16px;}
+
+  /* score table */
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:7px 6px; text-align:center;}
+  thead th{font-size:11px; color:var(--ink-soft); border-bottom:2px solid var(--line);}
+  tbody tr{border-bottom:1px solid #eadfc6; cursor:pointer;}
+  tbody tr:active{background:#f3ead3;}
+  td.name{text-align:left; font-weight:700; max-width:90px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  td.avg{font-family:'Bungee'; color:var(--teal); font-size:15px;}
+  .mini-del{color:var(--red); font-weight:900; font-size:15px; padding:0 4px;}
+
+  /* forms */
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-top:10px;}
+  .fld{display:flex; flex-direction:column; gap:3px;}
+  .fld.grow{flex:1 1 120px;}
+  label{font-size:11px; font-weight:700; color:var(--ink-soft);}
+  input,select{font-family:inherit; font-size:15px; padding:9px 10px; border:1.5px solid var(--line-d);
+    border-radius:9px; background:#fff; color:var(--ink); width:100%;}
+  input:focus,select:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px rgba(15,94,91,.14);}
+  .sc-in{width:62px; text-align:center; font-family:'Bungee'; font-size:17px; letter-spacing:1px;}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .chip{font-size:12px; font-weight:700; padding:5px 11px; border-radius:999px; border:1.5px solid var(--line-d);
+    background:#fff; cursor:pointer; color:var(--ink-soft); font-family:inherit;}
+  .chip:active{background:#f0e6cf;}
+
+  button.btn{font-family:inherit; font-weight:900; font-size:14px; border:none; border-radius:10px;
+    padding:10px 16px; cursor:pointer; color:#fff; background:var(--teal); box-shadow:0 3px 0 var(--teal-d);}
+  button.btn:active{transform:translateY(2px); box-shadow:0 1px 0 var(--teal-d);}
+  button.btn.red{background:var(--red); box-shadow:0 3px 0 var(--red-d);}
+  button.btn.ghost{background:#fff; color:var(--teal); border:2px solid var(--teal); box-shadow:none;}
+  button.btn.sm{padding:7px 12px; font-size:13px;}
+
+  /* fee summary */
+  .fee-sum{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;}
+  .fee-cell{background:var(--paper2); border:1.5px solid var(--line); border-radius:9px; padding:8px 10px;}
+  .fee-cell .k{font-size:11px; color:var(--ink-soft); font-weight:700;}
+  .fee-cell .v{font-family:'Bungee'; font-size:16px; margin-top:1px;}
+  .fee-cell.bal{grid-column:1 / -1; background:var(--teal); color:#fff; border-color:var(--teal-d);}
+  .fee-cell.bal .k{color:#cfeae8;}
+  .fee-cell .v.in{color:var(--teal);}
+  .fee-cell .v.out{color:var(--red);}
+  .carry{font-size:11px; color:var(--ink-soft); margin-bottom:8px;}
+
+  .lg-list{list-style:none; margin:0 0 4px; padding:0;}
+  .lg-item{display:flex; align-items:center; gap:8px; padding:7px 4px; border-bottom:1px dashed #e3d8bf; font-size:13px;}
+  .lg-badge{font-size:10px; font-weight:900; padding:2px 7px; border-radius:6px; color:#fff; flex:0 0 auto;}
+  .lg-badge.in{background:var(--teal);}
+  .lg-badge.out{background:var(--red);}
+  .lg-cat{font-weight:700; flex:0 0 auto; max-width:96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .lg-memo{color:var(--ink-soft); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px;}
+  .lg-amt{font-family:'Bungee'; flex:0 0 auto;}
+  .lg-amt.in{color:var(--teal);} .lg-amt.out{color:var(--red);}
+
+  /* settings */
+  .member-chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;}
+  .member-chip{display:flex; align-items:center; gap:6px; background:var(--paper2);
+    border:1.5px solid var(--line-d); border-radius:999px; padding:6px 8px 6px 13px; font-weight:700; font-size:13px;}
+  .member-chip .x{color:var(--red); font-weight:900; cursor:pointer; font-size:16px; line-height:1;}
+
+  /* toast & loading */
+  #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; padding:11px 18px; border-radius:10px; font-size:14px; font-weight:700;
+    opacity:0; pointer-events:none; transition:.25s; z-index:50; max-width:90vw; text-align:center;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  #toast.err{background:var(--red-d);}
+  #loading{position:fixed; inset:0; background:rgba(241,231,208,.7); display:none; align-items:center; justify-content:center; z-index:60;}
+  #loading.show{display:flex;}
+  .ball{width:42px; height:42px; border-radius:50%; background:radial-gradient(circle at 32% 30%, #2a8f8a, var(--teal-d));
+    position:relative; animation:roll .8s linear infinite;}
+  .ball::before,.ball::after{content:''; position:absolute; width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.55);}
+  .ball::before{top:11px; left:13px;} .ball::after{top:11px; left:23px;}
+  @keyframes roll{to{transform:rotate(360deg);}}
+  .note{font-size:11px; color:var(--ink-soft); margin-top:10px; text-align:center;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>BOWLING CUP<span class="ja">ボウリングコンペ集計</span></h1>
+    <span class="pins">🎳</span>
+    <button class="reload" data-act="reload">↻ 更新</button>
+  </header>
+
+  <div class="wrap">
+    <div id="setup">
+      <h2>⚙ 初期設定が必要です</h2>
+      <p style="margin:0; font-size:14px;">このファイル内の JavaScript にある <code>GAS_URL</code> に、GAS ウェブアプリの URL（<code>…/exec</code>）を貼り付けてください。</p>
+      <ol>
+        <li>専用の Google スプレッドシートを新規作成</li>
+        <li>拡張機能 &gt; Apps Script に <code>code.gs</code> を貼り付け</li>
+        <li>デプロイ &gt; ウェブアプリ（実行：自分／アクセス：全員）</li>
+        <li>発行された URL を <code>GAS_URL</code> に貼って再読み込み</li>
+      </ol>
+    </div>
+
+    <div id="main" style="display:none;">
+      <div id="year-tabs"></div>
+      <div id="year-content"></div>
+      <p class="note">スコアは「ベスト3」を入力 ／ 上半期＝2・4・6月 ／ 年間＝2〜12月の累計で優勝決定</p>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="loading"><div class="ball"></div></div>
+
+<script>
+/* ===================================================================
+   ▼▼▼ ここに GAS ウェブアプリの URL を貼り付けてください ▼▼▼
+   例: const GAS_URL = "https://script.google.com/macros/s/XXXXXXXX/exec";
+=================================================================== */
+const GAS_URL = "";
+/* =================================================================== */
+
+const EVEN_MONTHS = [2, 4, 6, 8, 10, 12];
+const H1_MONTHS   = [2, 4, 6];
+const ALL_MONTHS  = [2, 4, 6, 8, 10, 12];
+const QUICK_CATS  = ['お昼代', 'ドリンク', '景品', '会場費', 'ゲーム代'];
+
+let DATA = { members: [], scores: [], ledger: [], settings: { initialBalance: 0 } };
+let selectedYear = new Date().getFullYear();
+let openMonths   = new Set();
+let extraYears   = new Set();
+
+/* ---------- API（全て GET：CORS 回避） ---------- */
+async function api(action, data) {
+  if (!GAS_URL) { renderAll(); return; }
+  showLoading(true);
+  try {
+    let url = GAS_URL + '?action=' + encodeURIComponent(action) + '&_=' + Date.now();
+    if (data) url += '&data=' + encodeURIComponent(JSON.stringify(data));
+    const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const txt = await res.text();
+    let j;
+    try { j = JSON.parse(txt); }
+    catch (e) { throw new Error('サーバ応答を解釈できません。URL とデプロイ設定を確認してください。'); }
+    if (!j.ok) throw new Error(j.error || '不明なエラー');
+    DATA = j.data;
+    renderAll();
+  } catch (e) {
+    toast(e.message, true);
+    if (action === 'load') renderAll();
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* ---------- 計算 ---------- */
+function findScore(y, m, n) {
+  return DATA.scores.find(s => s.year === y && s.month === m && s.name === n);
+}
+function monthAvg(y, m, n) {
+  const e = findScore(y, m, n);
+  if (!e) return null;
+  const a = [e.s1, e.s2, e.s3].filter(v => v != null && !isNaN(v));
+  if (!a.length) return null;
+  return a.reduce((x, v) => x + v, 0) / a.length;
+}
+function cumAvg(y, months, n) {
+  const v = months.map(m => monthAvg(y, m, n)).filter(x => x != null);
+  if (!v.length) return null;
+  return v.reduce((x, t) => x + t, 0) / v.length;
+}
+function namesInYear(y) {
+  const set = new Set(DATA.members);
+  DATA.scores.filter(s => s.year === y).forEach(s => set.add(s.name));
+  return [...set];
+}
+function ranking(y, months) {
+  return namesInYear(y)
+    .map(n => ({ name: n, avg: cumAvg(y, months, n) }))
+    .filter(r => r.avg != null)
+    .sort((a, b) => b.avg - a.avg);
+}
+function ledgerOf(y, m) {
+  return DATA.ledger.filter(l => l.year === y && l.month === m)
+    .sort((a, b) => a.id < b.id ? -1 : 1);
+}
+function carryover(y, m) {
+  let bal = DATA.settings.initialBalance || 0;
+  DATA.ledger.forEach(l => {
+    const before = (l.year < y) || (l.year === y && l.month < m);
+    if (before) bal += (l.type === '収入' ? l.amount : -l.amount);
+  });
+  return bal;
+}
+function monthSum(y, m, type) {
+  return ledgerOf(y, m).filter(l => l.type === type).reduce((a, l) => a + l.amount, 0);
+}
+function allYears() {
+  const set = new Set([new Date().getFullYear()]);
+  DATA.scores.forEach(s => set.add(s.year));
+  DATA.ledger.forEach(l => set.add(l.year));
+  extraYears.forEach(y => set.add(y));
+  return [...set].sort((a, b) => b - a);
+}
+
+/* ---------- 整形 ---------- */
+const yen  = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const avgs = n => (n == null) ? '–' : (Math.round(n * 10) / 10).toLocaleString('ja-JP', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const esc  = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------- 描画 ---------- */
+function renderAll() {
+  if (!GAS_URL) {
+    document.getElementById('setup').style.display = 'block';
+    document.getElementById('main').style.display = 'none';
+    return;
+  }
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  const years = allYears();
+  if (!years.includes(selectedYear)) selectedYear = years[0];
+  renderTabs(years);
+  renderContent();
+}
+
+function renderTabs(years) {
+  let h = '';
+  years.forEach(y => {
+    h += `<button class="ytab ${y === selectedYear ? 'active' : ''}" data-act="year" data-year="${y}">${y}年度</button>`;
+  });
+  h += `<button class="ytab add" data-act="addYear">＋年度</button>`;
+  document.getElementById('year-tabs').innerHTML = h;
+}
+
+function renderContent() {
+  const y = selectedYear;
+  let h = '';
+
+  /* 順位まとめ */
+  h += `<div class="card"><div class="card-h"><span class="dot"></span>${y}年度 順位まとめ</div><div class="card-b">`;
+  h += `<div class="rank-grid">`;
+  h += rankBox('上半期ランキング', '2・4・6月', ranking(y, H1_MONTHS));
+  h += rankBox('年間ランキング', '2〜12月', ranking(y, ALL_MONTHS));
+  h += `</div></div></div>`;
+
+  /* 偶数月トグル */
+  h += `<div class="card"><div class="card-h"><span class="dot"></span>偶数月の記録</div>`;
+  EVEN_MONTHS.forEach(m => { h += monthItem(y, m); });
+  h += `</div>`;
+
+  /* 設定 */
+  h += settingsCard();
+
+  document.getElementById('year-content').innerHTML = h;
+
+  // トグルの開閉状態を復元
+  EVEN_MONTHS.forEach(m => {
+    if (openMonths.has(y + '-' + m)) {
+      const el = document.querySelector(`.month-item[data-m="${m}"]`);
+      if (el) el.classList.add('open');
+    }
+  });
+}
+
+function rankBox(title, tag, rows) {
+  let h = `<div class="rank-box"><h3>🏆 ${title}<span class="tag">${tag}</span></h3>`;
+  if (!rows.length) { h += `<div class="empty">まだ記録がありません</div></div>`; return h; }
+  const top = rows[0].avg;
+  rows.forEach((r, i) => {
+    const win = (r.avg === top);
+    h += `<div class="rank-row ${win ? 'win' : ''}">
+      <span class="rank-no">${win ? '👑' : (i + 1)}</span>
+      <span class="rank-name">${esc(r.name)}</span>
+      <span class="rank-avg">${avgs(r.avg)}</span>
+    </div>`;
+  });
+  h += `</div>`;
+  return h;
+}
+
+function monthItem(y, m) {
+  const half = H1_MONTHS.includes(m) ? '上半期' : '下半期';
+  let h = `<div class="month-item" data-m="${m}">`;
+  h += `<button class="mhead" data-act="toggle" data-m="${m}">
+          <span class="mn">${m}月</span>
+          <span class="half">${half}</span>
+          <span class="chev">▾</span>
+        </button>`;
+  h += `<div class="mbody">`;
+  h += scoreSub(y, m);
+  h += feeSub(y, m);
+  h += `</div></div>`;
+  return h;
+}
+
+/* 成績サブ */
+function scoreSub(y, m) {
+  let h = `<div class="sub"><p class="sub-t"><span class="ic">🎳</span>成績（ベスト3）</p>`;
+  const names = namesInYear(y).filter(n => findScore(y, m, n));
+  if (names.length) {
+    h += `<table><thead><tr><th style="text-align:left">名前</th><th>①</th><th>②</th><th>③</th><th>平均</th><th></th></tr></thead><tbody>`;
+    names.forEach(n => {
+      const e = findScore(y, m, n);
+      h += `<tr data-act="editScore" data-m="${m}" data-name="${esc(n)}">
+        <td class="name">${esc(n)}</td>
+        <td>${e.s1 ?? '-'}</td><td>${e.s2 ?? '-'}</td><td>${e.s3 ?? '-'}</td>
+        <td class="avg">${avgs(monthAvg(y, m, n))}</td>
+        <td><span class="mini-del" data-act="delScore" data-m="${m}" data-name="${esc(n)}">×</span></td>
+      </tr>`;
+    });
+    h += `</tbody></table>`;
+  } else {
+    h += `<div class="empty">この月の記録はまだありません</div>`;
+  }
+  // 入力フォーム
+  const opts = DATA.members.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  h += `<div class="row">
+    <div class="fld grow"><label>名前</label>
+      <select id="sc-name-${m}">${opts || '<option value="">先に下でメンバー登録</option>'}</select></div>
+  </div>
+  <div class="row">
+    <div class="fld"><label>ベスト①</label><input class="sc-in" id="sc-s1-${m}" inputmode="numeric" placeholder="0"></div>
+    <div class="fld"><label>ベスト②</label><input class="sc-in" id="sc-s2-${m}" inputmode="numeric" placeholder="0"></div>
+    <div class="fld"><label>ベスト③</label><input class="sc-in" id="sc-s3-${m}" inputmode="numeric" placeholder="0"></div>
+    <div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="saveScore" data-m="${m}">保存</button></div>
+  </div></div>`;
+  return h;
+}
+
+/* 会費サブ */
+function feeSub(y, m) {
+  const carry = carryover(y, m);
+  const inc = monthSum(y, m, '収入');
+  const out = monthSum(y, m, '支出');
+  const end = carry + inc - out;
+  const prevLabel = (m === 2) ? '前年12月から繰越' : `${m - 2}月から繰越`;
+
+  let h = `<div class="sub"><p class="sub-t"><span class="ic">💰</span>会費（出納帳）</p>`;
+  h += `<div class="carry">${prevLabel}：<b>${yen(carry)}</b></div>`;
+  h += `<div class="fee-sum">
+    <div class="fee-cell"><div class="k">当月の収入</div><div class="v in">${yen(inc)}</div></div>
+    <div class="fee-cell"><div class="k">当月の支出</div><div class="v out">${yen(out)}</div></div>
+    <div class="fee-cell bal"><div class="k">当月末の残高</div><div class="v">${yen(end)}</div></div>
+  </div>`;
+
+  // 明細
+  const list = ledgerOf(y, m);
+  if (list.length) {
+    h += `<ul class="lg-list">`;
+    list.forEach(l => {
+      const isIn = l.type === '収入';
+      h += `<li class="lg-item">
+        <span class="lg-badge ${isIn ? 'in' : 'out'}">${l.type}</span>
+        <span class="lg-cat">${esc(l.category || (isIn ? '会費' : '支出'))}</span>
+        <span class="lg-memo">${esc(l.memo || '')}${l.recorder ? '（' + esc(l.recorder) + '）' : ''}</span>
+        <span class="lg-amt ${isIn ? 'in' : 'out'}">${isIn ? '+' : '−'}${Number(l.amount).toLocaleString('ja-JP')}</span>
+        <span class="mini-del" data-act="delLedger" data-id="${esc(l.id)}">×</span>
+      </li>`;
+    });
+    h += `</ul>`;
+  }
+
+  // 入力フォーム
+  const recOpts = ['<option value="">記録者</option>'].concat(DATA.members.map(n => `<option value="${esc(n)}">${esc(n)}</option>`)).join('');
+  h += `<div class="row">
+    <div class="fld"><label>区分</label>
+      <select id="lg-type-${m}"><option value="収入">収入</option><option value="支出">支出</option></select></div>
+    <div class="fld grow"><label>費目</label><input id="lg-cat-${m}" placeholder="会費 / お昼代 など"></div>
+  </div>`;
+  h += `<div class="chips">` + QUICK_CATS.map(c => `<span class="chip" data-act="chip" data-m="${m}" data-cat="${c}">${c}</span>`).join('') + `</div>`;
+  h += `<div class="row">
+    <div class="fld"><label>金額(円)</label><input id="lg-amt-${m}" class="sc-in" style="width:90px" inputmode="numeric" placeholder="0"></div>
+    <div class="fld grow"><label>メモ</label><input id="lg-memo-${m}" placeholder="任意"></div>
+  </div>
+  <div class="row">
+    <div class="fld grow"><label>記録者</label><select id="lg-rec-${m}">${recOpts}</select></div>
+    <div class="fld"><label>&nbsp;</label><button class="btn sm" data-act="addLedger" data-m="${m}">追加</button></div>
+  </div></div>`;
+  return h;
+}
+
+/* 設定カード */
+function settingsCard() {
+  let h = `<div class="card"><div class="card-h"><span class="dot"></span>⚙ メンバー・設定</div><div class="card-b">`;
+  h += `<p class="sub-t" style="margin-top:0"><span class="ic">👥</span>メンバー</p>`;
+  if (DATA.members.length) {
+    h += `<div class="member-chips">`;
+    DATA.members.forEach(n => {
+      h += `<span class="member-chip">${esc(n)}<span class="x" data-act="delMember" data-name="${esc(n)}">×</span></span>`;
+    });
+    h += `</div>`;
+  } else {
+    h += `<div class="empty">メンバーを登録してください</div>`;
+  }
+  h += `<div class="row">
+    <div class="fld grow"><input id="mm-name" placeholder="名前を入力"></div>
+    <div class="fld"><button class="btn sm ghost" data-act="addMember">追加</button></div>
+  </div>`;
+
+  h += `<p class="sub-t" style="margin-top:16px"><span class="ic">🏦</span>初期残高（一番最初の繰越）</p>
+  <div class="row">
+    <div class="fld grow"><input id="init-bal" class="sc-in" style="width:140px" inputmode="numeric" value="${DATA.settings.initialBalance || 0}"></div>
+    <div class="fld"><button class="btn sm" data-act="setInit">保存</button></div>
+  </div>`;
+  h += `</div></div>`;
+  return h;
+}
+
+/* ---------- イベント（委譲） ---------- */
+function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function numOrEmpty(id) { const v = val(id); return v === '' ? '' : Number(v); }
+
+document.getElementById('app').addEventListener('click', async (ev) => {
+  const t = ev.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.dataset.act;
+  const m = t.dataset.m ? Number(t.dataset.m) : null;
+
+  switch (act) {
+    case 'reload':
+      api('load'); break;
+
+    case 'year':
+      selectedYear = Number(t.dataset.year); renderAll(); break;
+
+    case 'addYear': {
+      const v = prompt('追加する年度（西暦）を入力', String(new Date().getFullYear() + 1));
+      if (v && !isNaN(Number(v))) { extraYears.add(Number(v)); selectedYear = Number(v); renderAll(); }
+      break;
+    }
+
+    case 'toggle': {
+      const el = document.querySelector(`.month-item[data-m="${m}"]`);
+      el.classList.toggle('open');
+      const key = selectedYear + '-' + m;
+      el.classList.contains('open') ? openMonths.add(key) : openMonths.delete(key);
+      break;
+    }
+
+    case 'chip':
+      document.getElementById('lg-cat-' + m).value = t.dataset.cat; break;
+
+    case 'editScore': {
+      const n = t.dataset.name, e = findScore(selectedYear, m, n);
+      document.getElementById('sc-name-' + m).value = n;
+      document.getElementById('sc-s1-' + m).value = e.s1 ?? '';
+      document.getElementById('sc-s2-' + m).value = e.s2 ?? '';
+      document.getElementById('sc-s3-' + m).value = e.s3 ?? '';
+      toast(n + ' を編集中。修正して「保存」'); break;
+    }
+
+    case 'saveScore': {
+      const name = val('sc-name-' + m);
+      if (!name) { toast('名前を選択してください', true); return; }
+      await api('saveScore', {
+        year: selectedYear, month: m, name,
+        s1: numOrEmpty('sc-s1-' + m), s2: numOrEmpty('sc-s2-' + m), s3: numOrEmpty('sc-s3-' + m)
+      });
+      openMonths.add(selectedYear + '-' + m);
+      renderContent(); toast('成績を保存しました');
+      break;
+    }
+
+    case 'delScore': {
+      ev.stopPropagation();
+      const n = t.dataset.name;
+      if (!confirm(`${n} の${m}月の成績を削除しますか？`)) return;
+      await api('deleteScore', { year: selectedYear, month: m, name: n });
+      openMonths.add(selectedYear + '-' + m); renderContent();
+      break;
+    }
+
+    case 'addLedger': {
+      const amt = numOrEmpty('lg-amt-' + m);
+      if (amt === '' || isNaN(amt) || amt <= 0) { toast('金額を入力してください', true); return; }
+      await api('addLedger', {
+        year: selectedYear, month: m,
+        type: val('lg-type-' + m),
+        category: val('lg-cat-' + m),
+        amount: amt,
+        memo: val('lg-memo-' + m),
+        recorder: val('lg-rec-' + m)
+      });
+      openMonths.add(selectedYear + '-' + m); renderContent(); toast('記録しました');
+      break;
+    }
+
+    case 'delLedger': {
+      if (!confirm('この記録を削除しますか？')) return;
+      await api('deleteLedger', { id: t.dataset.id });
+      renderContent();
+      break;
+    }
+
+    case 'addMember': {
+      const n = val('mm-name');
+      if (!n) { toast('名前を入力してください', true); return; }
+      await api('addMember', { name: n }); toast(n + ' を追加しました');
+      break;
+    }
+
+    case 'delMember': {
+      const n = t.dataset.name;
+      if (!confirm(`${n} をメンバーから外しますか？（過去の記録は残ります）`)) return;
+      await api('removeMember', { name: n });
+      break;
+    }
+
+    case 'setInit':
+      await api('setInitialBalance', { amount: numOrEmpty('init-bal') || 0 }); toast('初期残高を保存しました');
+      break;
+  }
+});
+
+/* ---------- UI util ---------- */
+let toastTimer;
+function toast(msg, err) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'show' + (err ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 2400);
+}
+function showLoading(on) {
+  document.getElementById('loading').classList.toggle('show', on);
+}
+
+/* ---------- 起動 ---------- */
+renderAll();
+api('load');
+</script>
+</body>
+</html>
